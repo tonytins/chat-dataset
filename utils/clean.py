@@ -25,6 +25,7 @@ r_space_normalizer = re.compile(r'[\U00003000\U0000205F\U0000202F\U0000200A\U000
 r_newline_cleaner = re.compile(r'\n+')
 r_single_apostrophe_normalizer = re.compile(r'[’`]')
 r_double_apostrophe_normalizer = re.compile(r'[“”]')
+r_strange_apostrophe_normalizer = re.compile(r'[『』]')
 
 def clean(text):
     text = text.translate(normal_map)
@@ -33,4 +34,5 @@ def clean(text):
     text = r_newline_cleaner.sub(' ', text)
     text = r_single_apostrophe_normalizer.sub('\'', text)
     text = r_double_apostrophe_normalizer.sub('\"', text)
+    text = r_strange_apostrophe_normalizer.sub('\"', text)
     return text
