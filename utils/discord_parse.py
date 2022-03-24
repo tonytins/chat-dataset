@@ -1,18 +1,17 @@
 import json
 import argparse
 import tqdm
+import glob
 
 from clean import clean
 
 def format_channel(metadata):
     return f'[Name: #{metadata["name"]}; Description: {metadata["topic"]};]'
 
-def worker_parse(filename, **kwargs):
-    data = json.load(filename, 'r', encoding='utf-8'))
+def worker_parse(filename, out_filename=None, **kwargs):
+    data = json.load(open(filename, 'r', encoding='utf-8'))
     messages = data['messages']
     metadata = data['channel']
-
-    print(format_channel(metadata))
 
     msgs = []
 
@@ -39,16 +38,28 @@ def worker_parse(filename, **kwargs):
             msg = ''
         msgs.append(f'{author}{clean(message["content"])}{msg}')
     
-    # replace json file extension with txt
-    filename = filename.replace('.json', '.txt')
-    with open(filename, 'w', encoding='utf-8') as f:
+    if out_filename == None:
+        out_filename = filename.replace('.json', '.txt')
+    with open(out_filename, 'w', encoding='utf-8') as f:
         f.write('⁂\n'+format_channel(metadata)+'\n⁂\n')
         f.write('\n'.join(msgs))
         
 parser = argparse.ArgumentParser(description='Process Discord JSONs')
-parser.add_argument('-f', '--file', type=str, help='file to process', required=True)
+parser.add_argument('-f', '--file', type=str, help='file to process', required=False)
 parser.add_argument('-a', '--anonymous', action='store_true', help='anonymous author')
+parser.add_argument('-i', '--in_dir', type=str, help='directory to process', required=False)
+parser.add_argument('-o', '--out_dir', type=str, help='directory to output', required=False)
 args = parser.parse_args()
 
 if __name__ == '__main__':
-    worker_parse(args.file, **args)
+    if args.file:
+        worker_parse(args.file, anonymous=args.anonymous)
+    
+    if args.in_dir and args.out_dir:
+        files = glob.glob(args.in_dir+'/*.json')
+        for file in files:
+            try:
+                worker_parse(file, out_filename=args.out_dir+'/'+file.split('/')[-1].replace('.json', '.txt'), anonymous=args.anonymous)
+            except json.JSONDecodeError:
+                print(f'JSON Validation error in "{file}", skipping.')
+                continue
