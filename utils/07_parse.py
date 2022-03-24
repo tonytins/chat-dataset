@@ -1,4 +1,4 @@
-from re import T
+from re
 import parse
 import argparse
 
