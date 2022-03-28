@@ -1,3 +1,4 @@
+import os
 import json
 import argparse
 import tqdm
@@ -6,12 +7,13 @@ import glob
 from clean import clean
 
 def format_channel(metadata):
-    return f'[Name: #{metadata["name"]}; Description: {metadata["topic"]};]'
+    return f'[Name: #{metadata["name"]}; Description: {metadata["topic"]}; Guild: {metadata["guild"]}]'
 
 def worker_parse(filename, out_filename=None, **kwargs):
     data = json.load(open(filename, 'r', encoding='utf-8'))
     messages = data['messages']
     metadata = data['channel']
+    metadata['guild'] = data['guild']['name']
 
     msgs = []
 
@@ -43,19 +45,48 @@ def worker_parse(filename, out_filename=None, **kwargs):
     with open(out_filename, 'w', encoding='utf-8') as f:
         f.write('⁂\n'+format_channel(metadata)+'\n⁂\n')
         f.write('\n'.join(msgs))
-        
-parser = argparse.ArgumentParser(description='Process Discord JSONs')
-parser.add_argument('-f', '--file', type=str, help='file to process', required=False)
-parser.add_argument('-a', '--anonymous', action='store_true', help='anonymous author')
-parser.add_argument('-i', '--in_dir', type=str, help='directory to process', required=False)
-parser.add_argument('-o', '--out_dir', type=str, help='directory to output', required=False)
-args = parser.parse_args()
+
+def worker_dl(channel_id_path, auth_token):
+    # channel_id_path is a json
+    channel_id_data = json.load(open(channel_id_path, 'r', encoding='utf-8'))
+    channel_ids = []
+    print('Loading channel ids\nYou need to be in the following guilds to construct the dataset.\n')
+    for guild in channel_id_data['guilds']:
+        print(f'[Guild: {guild["name"]}; Invite: {guild["invite"]};]')
+        for channel in guild['channels']:
+            channel_ids.append(str(channel))
+    print(f'\nTotal channels: {len(channel_ids)}\nTotal guilds: {len(channel_id_data["guilds"])}\n')
+    print('Downloading messages...')
+    channel_ids = ' '.join(channel_ids)
+    os.system(f'discord-chat-exporter-cli export -t {auth_token} -f Json -c {channel_ids}')
+    print('Moving files...')
+    if not os.path.exists('raw/discord/'):
+        os.mkdir('raw/discord/')
+    for filename in glob.glob('*.json'):
+        os.rename(filename, f'raw/discord/{filename}')
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process Discord JSONs')
+    parser.add_argument('-f', '--file', type=str, help='file to process', required=False)
+    parser.add_argument('-a', '--anonymous', action='store_true', help='anonymous author')
+    parser.add_argument('-i', '--in_dir', type=str, help='directory to process', required=False, default='./raw/discord')
+    parser.add_argument('-o', '--out_dir', type=str, help='directory to output', required=False, default='./data/discord')
+    parser.add_argument('-d', '--dl', type=str, help='json file containing channel IDs to download', required=False)
+    parser.add_argument('-t', '--token', type=str, help='discord auth token', required=False)
+    args = parser.parse_args()
+
+    if args.dl:
+        if not args.token:
+            print('Please provide a Discord auth token')
+            exit(1)
+        worker_dl(args.dl, args.token)
+        exit()
     if args.file:
         worker_parse(args.file, anonymous=args.anonymous)
-    
+        exit()
     if args.in_dir and args.out_dir:
+        if not os.path.exists(args.out_dir):
+            os.mkdir(args.out_dir)
         files = glob.glob(args.in_dir+'/*.json')
         for file in files:
             try:
