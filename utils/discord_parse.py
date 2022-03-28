@@ -45,6 +45,8 @@ def worker_parse(filename, out_filename=None, **kwargs):
     with open(out_filename, 'w', encoding='utf-8') as f:
         f.write('⁂\n'+format_channel(metadata)+'\n⁂\n')
         f.write('\n'.join(msgs))
+    
+    return (metadata, len(msgs))
 
 def worker_dl(channel_id_path, auth_token):
     # channel_id_path is a json
@@ -65,6 +67,16 @@ def worker_dl(channel_id_path, auth_token):
     for filename in glob.glob('*.json'):
         os.rename(filename, f'raw/discord/{filename}')
 
+def dump_stats(s):
+    stats = {}
+    if os.path.exists('stats.json'):
+        stats = json.load(open('stats.json', 'r', encoding='utf-8'))
+    else:
+        stats = {'discord': {}}
+    stats['discord'][s[0]['guild']+' - '+s[0]['name']] = s[1]
+    with open('stats.json', 'w', encoding='utf-8') as f:
+        json.dump(stats, f)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process Discord JSONs')
     parser.add_argument('-f', '--file', type=str, help='file to process', required=False)
@@ -73,6 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out_dir', type=str, help='directory to output', required=False, default='./data/discord')
     parser.add_argument('-d', '--dl', type=str, help='json file containing channel IDs to download', required=False)
     parser.add_argument('-t', '--token', type=str, help='discord auth token', required=False)
+    parser.add_argument('-s', '--stats', action='store_true', help='write to stats')
     args = parser.parse_args()
 
     if args.dl:
@@ -82,7 +95,9 @@ if __name__ == '__main__':
         worker_dl(args.dl, args.token)
         exit()
     if args.file:
-        worker_parse(args.file, anonymous=args.anonymous)
+        s = worker_parse(args.file, anonymous=args.anonymous)
+        if args.stats:
+            dump_stats(s)
         exit()
     if args.in_dir and args.out_dir:
         if not os.path.exists(args.out_dir):
@@ -90,7 +105,9 @@ if __name__ == '__main__':
         files = glob.glob(args.in_dir+'/*.json')
         for file in files:
             try:
-                worker_parse(file, out_filename=args.out_dir+'/'+file.split('/')[-1].replace('.json', '.txt'), anonymous=args.anonymous)
+                s = worker_parse(file, out_filename=args.out_dir+'/'+file.split('/')[-1].replace('.json', '.txt'), anonymous=args.anonymous)
+                if args.stats:
+                    dump_stats(s)
             except json.JSONDecodeError:
                 print(f'JSON Validation error in "{file}", skipping.')
                 continue
