@@ -71,13 +71,15 @@ def dump_stats(s):
     stats = {}
     if os.path.exists('stats.json'):
         stats = json.load(open('stats.json', 'r', encoding='utf-8'))
+        if 'discord' not in stats:
+            stats['discord'] = {}
     else:
         stats = {'discord': {}}
     stats['discord'][s[0]['guild']+' - '+s[0]['name']] = s[1]
     with open('stats.json', 'w', encoding='utf-8') as f:
         json.dump(stats, f)
 
-if __name__ == '__main__':
+def parse(args=None):
     parser = argparse.ArgumentParser(description='Process Discord JSONs')
     parser.add_argument('-f', '--file', type=str, help='file to process', required=False)
     parser.add_argument('-a', '--anonymous', action='store_true', help='anonymous author')
@@ -85,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out_dir', type=str, help='directory to output', required=False, default='./data/discord')
     parser.add_argument('-d', '--dl', type=str, help='json file containing channel IDs to download', required=False)
     parser.add_argument('-t', '--token', type=str, help='discord auth token', required=False)
-    parser.add_argument('-s', '--stats', action='store_true', help='write to stats')
+    parser.add_argument('-s', '--stats', action='store_true', help='write to stats', default=True)
     args = parser.parse_args()
 
     if args.dl:
@@ -111,3 +113,6 @@ if __name__ == '__main__':
             except json.JSONDecodeError:
                 print(f'JSON Validation error in "{file}", skipping.')
                 continue
+
+if __name__ == '__main__':
+    parse()

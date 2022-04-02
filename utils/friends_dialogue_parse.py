@@ -24,7 +24,7 @@ def valid_csv(dict_reader):
 
 
 def format_conversation_metadata(utterance):
-    return f'[Season: {utterance["season_id"]}; Episode: {utterance["episode_id"]}; Conversation: {utterance["scene_id"]};]'
+    return f'[Title: Friends Season {utterance["season_id"]}]'
 
 
 def format_utterance(utterance):

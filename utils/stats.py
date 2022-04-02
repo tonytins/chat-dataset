@@ -13,6 +13,7 @@ if __name__ == '__main__':
     print('-- Convo1 Dataset Stats --')
     print(f'Datasets Available: {len(stats)}')
 
+    total_total = 0
     for dataset in stats.keys():
         total = 0
         print(f'\n-- Dataset Name: {dataset} --')
@@ -20,3 +21,6 @@ if __name__ == '__main__':
             print(f'{guild[0]}: {guild[1]}')
             total += guild[1]
         print(f'\nTotal Messages in {dataset}: {total}\n')
+        total_total += total
+    
+    print(f'\nTotal Messages in Convo Dataset: {total_total}\n')

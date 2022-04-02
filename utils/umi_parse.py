@@ -1,4 +1,4 @@
-import parse
+import parse as _parse
 import os
 import json
 
@@ -22,7 +22,7 @@ def worker_parse(filename, out_filename=None, stats=True, index=0):
 
     jap_characters = ['。', '「', '」', '？', '！', '、', '…', 'ー']
 
-    author = parse.parse('\ufeff== {0} ==\n', lines[0])[0]
+    author = _parse.parse('\ufeff== {0} ==\n', lines[0])[0]
 
     with open(out_filename, 'w') as f:
         for line in lines:
@@ -33,7 +33,7 @@ def worker_parse(filename, out_filename=None, stats=True, index=0):
                 continue
             if line.startswith('\n==') or line.startswith('=='):
                 try:
-                    author = parse.parse('== {0} ==\n', line)[0]
+                    author = _parse.parse('== {0} ==\n', line)[0]
                 except:
                     author = 'Narrator'
                 continue
@@ -72,13 +72,19 @@ def worker_parse(filename, out_filename=None, stats=True, index=0):
         f.write(metadata)
         f.write(clean_07(lines))
 
-if __name__ == '__main__':
+def parse():
     files = [
         './raw/visualnovel/ep1-4_EN__JP.txt',
         './raw/visualnovel/ep5-8_EN__JP.txt',
     ]
 
     output_files = [ i.replace('raw', 'data') for i in files ]
+
+    if not os.path.exists('./data/visualnovel'):
+        os.mkdir('./data/visualnovel')
     
     for i in range(len(files)):
         worker_parse(files[i], output_files[i], stats=True, index=i)
+
+if __name__ == '__main__':
+    parse()

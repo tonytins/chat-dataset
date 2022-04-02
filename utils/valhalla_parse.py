@@ -31,5 +31,8 @@ def worker_parse(filename, out_filename, stats=True):
             dump_stats(len(msgs), day)
 
 
-if __name__ == '__main__':
+def parse():
     worker_parse('./raw/visualnovel/valhalla.txt', './data/visualnovel/valhalla.txt')
+
+if __name__ == '__main__':
+    parse()
