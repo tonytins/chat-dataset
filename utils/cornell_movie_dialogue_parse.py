@@ -1,4 +1,6 @@
 # Parses the Cornell Movie Dialogue Corpus https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html
+import os
+import json
 import argparse
 import re
 import tqdm
@@ -54,7 +56,7 @@ def get_movie_metadata(filename):
 
 
 def format_movie_metadata(metadata):
-    return f'[Title: \'{metadata["title"]}\'; Year: {metadata["year"]}; Rating: {metadata["rating"]}; Num_votes: {metadata["num_votes"]}; Genres: {metadata["genres"]};]'
+    return f'[Title: {metadata["title"]}; Genres: {metadata["genres"].replace("[", "").replace("]", "")}]'.replace('\'', '')
 
 
 def construct_dialogue(lineIDs, lines):
@@ -65,10 +67,21 @@ def construct_dialogue(lineIDs, lines):
         dialogue.append(lines[lineID])
     return '\n'.join(dialogue)
 
+def dump_stats(length, movie_id):
+    stats = {'Cornell Movie-Dialogue Corpus': {}}
+    if os.path.exists('stats.json'):
+        stats = json.load(open('stats.json', 'r', encoding='utf-8'))
+        if 'Cornell Movie-Dialogue Corpus' not in stats:
+            stats['Cornell Movie-Dialogue Corpus'] = {}
+    stats['Cornell Movie-Dialogue Corpus'][str(movie_id)] = length
+    with open('stats.json', 'w', encoding='utf-8') as f:
+        json.dump(stats, f)
 
 # parses movie_conversations.txt and puts the results in out_filename
-def parse_conversations(conversation_filename, out_filename, lines, movie_metadata):
-    with open(conversation_filename, 'r', encoding='utf-8') as conversation_file, open(out_filename, 'w', encoding='utf-8') as out_file:
+def parse_conversations(conversation_filename, out_dir, lines, movie_metadata, stats=True):
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    with open(conversation_filename, 'r', encoding='utf-8') as conversation_file:
         for row in tqdm.tqdm(conversation_file, desc='Constructing dialogue'):
             row = row.split(' +++$+++ ')
             if len(row) != 4:
@@ -80,22 +93,33 @@ def parse_conversations(conversation_filename, out_filename, lines, movie_metada
                 dialogue = construct_dialogue(lineIDs, lines)
             except InvalidLineError:
                 continue
-            out_file.write(f'⁂\n{format_movie_metadata(movie_metadata[movieID])}\n⁂\n')
-            out_file.write(f'{dialogue}\n')
+            with open(f'{out_dir}/{movieID}.txt', 'w', encoding='utf-8') as out_file:
+                out_file.write(f'⁂\n{format_movie_metadata(movie_metadata[movieID])}\n⁂\n')
+                out_file.write(f'{dialogue}\n')
+                if stats:
+                    dump_stats(len(dialogue.split('\n')), movieID)
 
-
-parser = argparse.ArgumentParser(description='Process Cornell Movie Dialogue Corpus', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-i', '--in_dir', type=str, help='directory to process', default='.')
-parser.add_argument('-o', '--out_file', type=str, help='file to output', default='cornell_movie_dialogue.txt')
-parser.add_argument('-r', '--raw_name', action='store_true', help='use speaker tags as they appear in the dataset instead of normalized names')
-args = parser.parse_args()
-
-if __name__ == '__main__':
+def parse(args = None):
+    if args == None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--in_dir', default='./raw/cornell movie-dialogs corpus')
+        parser.add_argument('--out_dir', default='./data/cornell movie-dialogs corpus')
+        parser.add_argument('--raw_name', action='store_true', default=False)
+        parser.add_argument('--stats', action='store_true', default=True)
+        args = parser.parse_args()
     try:
         lines = get_lines(args.in_dir + '/movie_lines.txt', args.raw_name);
         movie_metadata = get_movie_metadata(args.in_dir + '/movie_titles_metadata.txt')
-        parse_conversations(args.in_dir + '/movie_conversations.txt', args.out_file, lines, movie_metadata)
+        parse_conversations(args.in_dir + '/movie_conversations.txt', args.out_dir, lines, movie_metadata)
     except (FileNotFoundError, InvalidFormatError) as e:
         print(e)
         exit(1)
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process Cornell Movie Dialogue Corpus', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-i', '--in_dir', type=str, help='directory to process', default='.')
+    parser.add_argument('-o', '--out_file', type=str, help='file to output', default='cornell_movie_dialogue.txt')
+    parser.add_argument('-r', '--raw_name', action='store_true', help='use speaker tags as they appear in the dataset instead of normalized names')
+    parser.add_argument('-s', '--stats', action='store_true', help='store stats')
+    args = parser.parse_args()
+    parse(None)
